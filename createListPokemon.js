@@ -13,8 +13,8 @@ const transformData = () => {
       id,
       name,
       types,
-      // url: `http://localhost:5000/images/${id}.png`
-      url: ``,
+       url: `http://localhost:8000/images/${id}.png`
+      ,
     };
   });
 

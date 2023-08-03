@@ -3,12 +3,7 @@ const crypto = require("crypto");
 const express = require("express");
 const router = express.Router();
 
-/**
- * params: /
- * description: get all pokemons
- * query:
- * method: get
- */
+
 
 router.get("/", (req, res, next) => {
   //input validation
@@ -66,12 +61,7 @@ router.get("/", (req, res, next) => {
   }
 });
 
-/**
- * params: /
- * description: get single pokemon
- * query:
- * method: get
- */
+
 
 router.get("/:id", (req, res, next) => {
   try {
@@ -106,12 +96,6 @@ router.get("/:id", (req, res, next) => {
   }
 });
 
-/**
- * params: /
- * description: add a new pokemon
- * query:
- * method: get
- */
 
 router.post("/", (req, res, next) => {
   const pokemonTypes = [
