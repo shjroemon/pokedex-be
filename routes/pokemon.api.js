@@ -60,7 +60,7 @@ router.get("/", function (req, res, next) {
 
     datas = datas.slice(offset, offset + limit);
 
-    res.status(200).send({ datas });
+    res.status(200).send({ data: datas });
   } catch (error) {
     next(error);
   }
