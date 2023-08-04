@@ -4,7 +4,7 @@ const { faker } = require("@faker-js/faker");
 
 const createData = async () => {
   let newData = await csv().fromFile("pokemon.csv");
-  let data = JSON.parse(fs.readFileSync("db.json"));
+  let data = JSON.parse(fs.readFileSync("pokemons.json"));
 
   newData = newData.slice(0, 721).map((e, i) => {
     if (e.Type1 && e.Type2) {
@@ -39,6 +39,6 @@ const createData = async () => {
   data.data = newData.slice(0, 721);
   let totalPokemon = newData.length;
   data.totalPokemon = totalPokemon;
-  fs.writeFileSync("db.json", JSON.stringify(data));
+  fs.writeFileSync("pokemons.json", JSON.stringify(data));
 };
 createData();

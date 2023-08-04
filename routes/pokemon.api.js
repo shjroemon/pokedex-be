@@ -104,7 +104,7 @@ router.get("/:pokeId", function (req, res, next) {
           nextPokemon: data[index + 1],
         };
     }
-    res.status(200).send({ datas });
+    res.status(200).send({ data: datas });
   } catch (error) {
     next(error);
   }
