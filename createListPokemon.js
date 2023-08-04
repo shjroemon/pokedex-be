@@ -17,7 +17,7 @@ const createData = async () => {
         types: [type1, type2],
         height: faker.datatype.number({ max: 100 }),
         weight: faker.datatype.number({ max: 100 }),
-        url: `http://localhost:8000/images/${i + 1}.jpg`,
+        url: `https://pokedex-be-8s22.onrender.com/images/${i + 1}.jpg`,
         description: faker.company.catchPhrase(),
         abilities: faker.company.catchPhraseAdjective(),
       };
@@ -30,7 +30,7 @@ const createData = async () => {
         types: [type1],
         height: faker.datatype.number({ max: 100 }),
         weight: faker.datatype.number({ max: 100 }),
-        url: `http://localhost:8000/images/${i + 1}.jpg`,
+        url: `https://pokedex-be-8s22.onrender.com/images/${i + 1}.jpg`,
         description: faker.company.catchPhrase(),
         abilities: faker.company.catchPhraseAdjective(),
       };
