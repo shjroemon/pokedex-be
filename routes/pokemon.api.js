@@ -1,103 +1,120 @@
-const fs = require("fs");
-const crypto = require("crypto");
 const express = require("express");
+const crypto = require("crypto");
+const fs = require("fs");
 const router = express.Router();
 
+/**
+ descrpitions: get all pokemons
+*/
 
-
-router.get("/", (req, res, next) => {
-  //input validation
+router.get("/", function (req, res, next) {
   const allowedFilter = ["search", "type", "page", "limit"];
   try {
-    let { page, limit, ...filterQuery } = req.query; // from the req/frontend side
+    let db = JSON.parse(fs.readFileSync("db.json", "utf-8"));
+    let { data } = db;
 
+    let { page, limit, ...filterQuery } = req.query;
     page = parseInt(page) || 1;
-    limit = parseInt(limit) || 10;
+    limit = parseInt(limit) || 20;
+    let offset = limit * (page - 1);
 
-    const filterKeys = Object.keys(filterQuery); // create arr from obj keys
-
+    const filterKeys = Object.keys(filterQuery);
     filterKeys.forEach((key) => {
       if (!allowedFilter.includes(key)) {
         const exception = new Error(`Query ${key} is not allowed`);
         exception.statusCode = 401;
         throw exception;
       }
+      //remove malicious query
       if (!filterQuery[key]) delete filterQuery[key];
     });
 
-    //processing logic
-    //Number of items skip for selection
-    let offset = limit * (page - 1);
-
-    //Read data from db.json then parse to JSobject
-    let db = fs.readFileSync("pokemons.json", "utf-8");
-    db = JSON.parse(db);
-    const { data } = db;
-    // console.log(data);
-
-    //Filter data
-    let result = [];
+    let datas = [];
     if (filterKeys.length) {
       if (filterKeys.includes("search")) {
-        result = data.filter((pokemon) =>
-          pokemon.name.toLowerCase().includes(filterQuery.search.toLowerCase())
-        );
+        datas = datas.length
+          ? datas.filter((pokemon) =>
+              pokemon.name.includes(filterQuery.search.toLowerCase())
+            )
+          : data.filter((pokemon) =>
+              pokemon.name.includes(filterQuery.search.toLowerCase())
+            );
       }
-
+      //filter by types
       if (filterKeys.includes("type")) {
-        result = data.filter((pokemon) =>
-          pokemon.types.includes(filterQuery.type)
-        );
+        datas = datas.length
+          ? datas.filter((pokemon) =>
+              pokemon.types.some(
+                (el) => el.toLowerCase() === filterQuery.type.toLowerCase() // case insensitive search
+              )
+            )
+          : data.filter((pokemon) =>
+              pokemon.types.some(
+                (el) => el.toLowerCase() === filterQuery.type.toLowerCase()
+              )
+            );
       }
     } else {
-      result = data;
+      datas = data;
     }
-    //then select number of result by offset
-    result = result.slice(offset, offset + limit);
-    //send response
-    res.status(200).send({ data: result });
+
+    datas = datas.slice(offset, offset + limit);
+
+    res.status(200).send({ datas });
   } catch (error) {
     next(error);
   }
 });
 
+/**
+ descrpitions: get single pokemon
+*/
 
-
-router.get("/:id", (req, res, next) => {
+router.get("/:pokeId", function (req, res, next) {
+  const { pokeId } = req.params;
   try {
-    const { id } = req.params;
-    //   console.log(req.params);
+    let db = JSON.parse(fs.readFileSync("db.json", "utf-8"));
+    let { data, totalPokemon } = db;
 
-    let db = fs.readFileSync("pokemons.json", "utf-8");
-    db = JSON.parse(db);
-    const { data } = db;
+    let index = data.indexOf(
+      data.find((pokemon) => pokemon.id === parseInt(pokeId))
+    );
 
-    let currentIndex = data.findIndex((pokemon) => pokemon.id === parseInt(id));
+    let datas;
 
-    let totalIndex = data.length - 1;
-
-    let prevIndex = currentIndex - 1;
-    let nextIndex = currentIndex + 1;
-    if (currentIndex === 0) {
-      prevIndex = totalIndex;
-    } else if (currentIndex === totalIndex) {
-      nextIndex = 0;
+    switch (index) {
+      case 0:
+        datas = {
+          pokemon: data[0],
+          previousPokemon: data[totalPokemon - 1],
+          nextPokemon: data[1],
+        };
+        break;
+      case totalPokemon - 1:
+        datas = {
+          pokemon: data[totalPokemon - 1],
+          previousPokemon: data[totalPokemon - 2],
+          nextPokemon: data[0],
+        };
+        break;
+      default:
+        datas = {
+          pokemon: data[index],
+          previousPokemon: data[index - 1],
+          nextPokemon: data[index + 1],
+        };
     }
-
-    const result = {
-      previousPokemon: data[prevIndex],
-      pokemon: data[currentIndex],
-      nextPokemon: data[nextIndex],
-    };
-
-    res.status(200).send({ data: result });
+    res.status(200).send({ datas });
   } catch (error) {
     next(error);
   }
 });
 
+/**
+ descrpitions: post pokemon
+*/
 
-router.post("/", (req, res, next) => {
+router.post("/", function (req, res, next) {
   const pokemonTypes = [
     "bug",
     "dragon",
@@ -111,7 +128,81 @@ router.post("/", (req, res, next) => {
     "dark",
     "electric",
     "fighting",
-    "flying",
+    "flyingText",
+    "grass",
+    "ice",
+    "poison",
+    "rock",
+    "water",
+  ];
+
+  let { name, id, types, url } = req.body;
+  let db = JSON.parse(fs.readFileSync("db.json", "utf-8"));
+  let { data } = db;
+  try {
+    //Validate Inputs & Handle Errors
+
+    if (!name || !id) {
+      const exception = new Error(`Missing required data.`);
+      exception.statusCode = 401;
+      throw exception;
+    }
+
+    if (types.length > 2) {
+      const exception = new Error(`Pokémon can only have one or two types.`);
+      throw exception;
+    }
+
+    types.forEach((type) => {
+      if (pokemonTypes.includes(type)) {
+        return type;
+      } else {
+        const exception = new Error(`Pokémon’s type is invalid.`);
+        throw exception;
+      }
+    });
+    data.map((item) => {
+      if (item.name === name || item.id === id) {
+        const exception = new Error(`The Pokémon already exists.`);
+        throw exception;
+      } else {
+        return item;
+      }
+    });
+
+    //Create & Save Pokemon
+    const newPokemon = { name: name, id: id, url: url, types: types };
+    data.push(newPokemon);
+
+    fs.writeFileSync("db.json", JSON.stringify(db));
+    res.status(200).send("done");
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ descrpitions: update pokemon
+*/
+
+router.put("/:pokeId", function (req, res, next) {
+  const { pokeId } = req.params;
+  const updates = req.body;
+  const allowUpdate = ["name", "types", "url"];
+  const pokemonTypes = [
+    "bug",
+    "dragon",
+    "fairy",
+    "fire",
+    "ghost",
+    "ground",
+    "normal",
+    "psychic",
+    "steel",
+    "dark",
+    "electric",
+    "fighting",
+    "flyingText",
     "grass",
     "ice",
     "poison",
@@ -120,45 +211,64 @@ router.post("/", (req, res, next) => {
   ];
 
   try {
-    let db = fs.readFileSync("pokemons.json", "utf-8");
-    db = JSON.parse(db);
-    const { data } = db;
+    //Input Validation
 
-    const { id, name, types, url } = req.body;
-    console.log(req.body);
-
-    if (!id || !name || !types || !url) {
-      const exception = new Error(`Missing required data.`);
-      exception.statusCode = 401;
-      throw exception;
-    }
-    if (
-      data.find(
-        (pokemon) => pokemon.id === parseInt(id) || pokemon.name === name
-      )
-    ) {
-      const exception = new Error(`The pokemon already exists.`);
-      exception.statusCode = 401;
-      throw exception;
-    }
-    if (types.length > 2) {
-      const exception = new Error(`A pokemon can't have more than two types.`);
-      exception.statusCode = 401;
-      throw exception;
-    }
-    if (!pokemonTypes.filter((pokemonType) => pokemonType !== types.join())) {
-      const exception = new Error(`Invalid pokemon type.`);
+    //fields:
+    const updateKeys = Object.keys(updates);
+    const notAllow = updateKeys.filter((el) => !allowUpdate.includes(el));
+    if (notAllow.length) {
+      const exception = new Error(`Update field not allow`);
       exception.statusCode = 401;
       throw exception;
     }
 
-    const newPokemon = { id: parseInt(id), name, types, url };
-    if (newPokemon.types[1] === null) newPokemon.types.pop();
-    data.push(newPokemon);
+    //Processing data
+    let db = JSON.parse(fs.readFileSync("db.json", "utf-8"));
+    let { data } = db;
 
-    db = JSON.stringify(db);
-    fs.writeFileSync("pokemons.json", db);
-    res.status(200).send(newPokemon);
+    const targetIndex = data.findIndex((item) => item.id === Number(pokeId));
+
+    if (targetIndex < 0) {
+      const exception = new Error(`Pokemon not found`);
+      throw exception;
+    }
+
+    const updatedPokemon = { ...data[targetIndex], ...updates };
+    data[targetIndex] = updatedPokemon;
+
+    //Save data
+    fs.writeFileSync("db.json", JSON.stringify(db));
+    res.status(200).send({ data: updatedPokemon });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ descrpitions: delete pokemon by id
+*/
+
+router.delete("/:pokeId", function (req, res, next) {
+  const { pokeId } = req.params;
+  //   console.log(req.params);
+  try {
+    let db = JSON.parse(fs.readFileSync("db.json", "utf-8"));
+    let { data } = db;
+    console.log(data);
+
+    //Input Validation
+    const targetIndex = data.findIndex((item) => item.id === parseInt(pokeId));
+    // console.log(foundPokemon);
+    if (targetIndex < 0) {
+      const exception = new Error(`Pokemon not found`);
+      exception.statusCode = 404;
+      throw exception;
+    }
+
+    //Process & Save Data
+    db.data = data.filter((item) => item.id !== parseInt(pokeId));
+    fs.writeFileSync("db.json", JSON.stringify(db));
+    res.status(200).send({});
   } catch (error) {
     next(error);
   }

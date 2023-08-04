@@ -2,13 +2,12 @@ var express = require("express");
 var router = express.Router();
 
 /* GET home page. */
-router.get("/", function (req, res, next) {
-  // res.render('index', { title: 'Express' });
-  res.status(200).send("Welcome to Pokerdex!");
-});
+const pokemonRouter = require("./pokemon.api.js");
 
-/* Pokemon router */
-const pokemonRouter = require("./pokemon.api");
 router.use("/pokemons", pokemonRouter);
+
+router.get("/", function (req, res, next) {
+  res.status(200).send("Welcome to Pokedex!");
+});
 
 module.exports = router;
